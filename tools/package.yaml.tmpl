@@ -1,0 +1,100 @@
+# ha-taipower-estimate — 台電電費估算 HA package
+# 費率版本：@@TARIFF@@（@@EFFECTIVE@@ 起實施，@@VERIFIED@@ 對照台電官方電價表）
+# 電價類別：@@PROFILE_LABEL@@　週期：@@MONTHS@@ 個月（@@CYCLE_DAYS@@ 天）
+#
+# ！！這個檔是產生的。費率改 tariff/rates.json、選項改 tools/gen_package.py 的參數，不要手改。
+# 重產指令：
+#   @@CLI@@
+#
+# 使用前一定要改（產生時用參數帶入）：
+#   source entity = @@SOURCE@@   （電表「總累積度數」，kWh，state_class: total_increasing）
+#   歸零 cron     = "@@CRON@@"   （對齊你的抄表日，看電費單的計費期間）
+
+# 一、累積用電：整套系統裡唯一會歸零的地方
+utility_meter:
+  power_cycle_energy:
+    source: @@SOURCE@@
+    name: Power cycle energy
+    cron: "@@CRON@@"
+
+template:
+  - sensor:
+      # 二、分母：週期已過天數，做成看得到的 sensor
+      - name: Power cycle days
+        unique_id: power_cycle_days
+        unit_of_measurement: d
+        availability: "{{ state_attr('sensor.power_cycle_energy', 'last_reset') is not none }}"
+        state: >-
+          {% set reset = state_attr('sensor.power_cycle_energy', 'last_reset') | as_datetime %}
+          {{ ((now() - reset).total_seconds() / 86400) | round(2) }}
+
+      # 二之二、週期進度（%）：已過天數 / 週期天數
+      - name: Power cycle progress
+        unique_id: power_cycle_progress
+        unit_of_measurement: "%"
+        availability: "{{ has_value('sensor.power_cycle_days') }}"
+        state: >-
+          {{ ([states('sensor.power_cycle_days') | float(0) / @@CYCLE_DAYS@@ * 100, 100] | min) | round(1) }}
+
+      # 三、外推：分母不到 @@MIN_DAYS@@ 天就不給數字，附可信度
+      - name: Power cycle estimate
+        unique_id: power_cycle_estimate
+        unit_of_measurement: kWh
+        availability: "{{ states('sensor.power_cycle_days') | float(0) >= @@MIN_DAYS@@ }}"
+        state: >-
+          {% set kwh = states('sensor.power_cycle_energy') | float(0) %}
+          {% set days = states('sensor.power_cycle_days') | float(1) %}
+          {{ (kwh / days * @@CYCLE_DAYS@@) | round(0) }}
+        attributes:
+          confidence: >-
+            {% set d = states('sensor.power_cycle_days') | float(0) %}
+            {{ 'low' if d < 7 else 'medium' if d < 21 else 'high' }}
+
+      # 四、夏月占比：這個週期有幾成的日子落在夏月（@@SUMMER_LABEL@@）。
+      #    last_reset 可能是 UTC，先轉本地時間再數月份，否則台北 00:00 歸零會被算成前一天
+      - name: Power cycle summer ratio
+        unique_id: power_cycle_summer_ratio
+        availability: "{{ state_attr('sensor.power_cycle_energy', 'last_reset') is not none }}"
+        state: >-
+          {% set reset = state_attr('sensor.power_cycle_energy', 'last_reset') | as_datetime | as_local %}
+          {% set ns = namespace(summer=0) %}
+          {% for i in range(@@CYCLE_DAYS@@) %}
+            {% if (reset + timedelta(days=i)).month in @@SUMMER_MONTHS@@ %}
+              {% set ns.summer = ns.summer + 1 %}
+            {% endif %}
+          {% endfor %}
+          {{ (ns.summer / @@CYCLE_DAYS@@) | round(4) }}
+
+      # 五、級距電價：@@TARIFF@@，@@PROFILE_LABEL@@，級距上限已乘以 @@MONTHS@@
+      #    每筆 = (級距上限度數, 夏月每度, 非夏月每度)
+      - name: Power tier price
+        unique_id: power_tier_price
+        unit_of_measurement: "TWD/kWh"
+        availability: "{{ has_value('sensor.power_cycle_estimate') and has_value('sensor.power_cycle_summer_ratio') }}"
+        state: >-
+          {% set kwh = states('sensor.power_cycle_estimate') | float(0) %}
+          {% set r = states('sensor.power_cycle_summer_ratio') | float(0) %}
+          {% set ns = namespace(price=none) %}
+          {% set tiers = [@@TIERS@@] %}
+          {% for t in tiers if ns.price is none %}
+            {% if kwh <= t[0] %}{% set ns.price = t[1] * r + t[2] * (1 - r) %}{% endif %}
+          {% endfor %}
+          {{ ns.price | round(2) }}
+
+      # 六、預估電費：逐級累進加總（同一張級距表）
+      - name: Power cycle bill
+        unique_id: power_cycle_bill
+        unit_of_measurement: TWD
+        availability: "{{ has_value('sensor.power_cycle_estimate') and has_value('sensor.power_cycle_summer_ratio') }}"
+        state: >-
+          {% set kwh = states('sensor.power_cycle_estimate') | float(0) %}
+          {% set r = states('sensor.power_cycle_summer_ratio') | float(0) %}
+          {% set ns = namespace(total=0.0, left=kwh, prev=0) %}
+          {% set tiers = [@@TIERS@@] %}
+          {% for t in tiers if ns.left > 0 %}
+            {% set use = [ns.left, t[0] - ns.prev] | min %}
+            {% set ns.total = ns.total + use * (t[1] * r + t[2] * (1 - r)) %}
+            {% set ns.left = ns.left - use %}
+            {% set ns.prev = t[0] %}
+          {% endfor %}
+          {{ ns.total | round(0) }}
