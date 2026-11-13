@@ -2,6 +2,15 @@
 
 格式參考 Keep a Changelog；版本號：費率更新 → minor，邏輯修正 → patch。
 
+## [0.2.4] - 2026-11-14
+
+程式邏輯沒有改。
+
+### 變更
+
+- README：加上部落格文章連結、需求與費用、支持連結；移除指向不在 repo 內的 `AGENTS.md` 的連結。
+- 新增 gitleaks secret-scan workflow。
+
 ## [0.2.3] - 2026-11-14
 
 計算邏輯沒有改。

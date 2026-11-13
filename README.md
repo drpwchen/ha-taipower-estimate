@@ -3,6 +3,8 @@
 **還沒收到帳單，就知道這期電費大概多少。** 在 Home Assistant 介面點幾下就裝好，不用寫 YAML，
 用你家既有的電表 sensor 算出這期（兩個月或一個月）的預估度數、落在哪一級、預估電費。
 
+> 📖 來由與用法：[智慧家庭的電力誤報，與這個電費估算的由來](https://drpwchen.com/posts/smart-home-power-false-alarms/)
+
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 [![GitHub Release](https://img.shields.io/github/v/release/drpwchen/ha-taipower-estimate)](https://github.com/drpwchen/ha-taipower-estimate/releases)
 [![Validate](https://github.com/drpwchen/ha-taipower-estimate/actions/workflows/validate.yml/badge.svg)](https://github.com/drpwchen/ha-taipower-estimate/actions/workflows/validate.yml)
@@ -16,6 +18,10 @@
 （2026.11 以上開內建 Marketplace，更舊的版本開 HACS；手動步驟見[安裝](#安裝)。）
 
 唯一的前提：你已經有一個**電表總累積度數**的 sensor（單位 kWh、只增不減，例如 Emporia、Shelly、智慧電表整合的 total energy）。
+
+**需求與費用**：Home Assistant（`hacs.json` 標的最低版本為 2024.12）；不需要 GPU、帳號或 API key，免費。
+
+> 🧋 省了你時間的話，[請我喝杯飲料](https://drpwchen.com/support/)。
 
 ## 長這樣
 
@@ -186,4 +192,8 @@ YAML 與 `rates.json` 沒有脫鉤（手改 YAML 會被抓到）；整合版的�
 停機錯過抄表日、換電表或改排程，以及在 HA core 裡的設定精靈與歸零。計算核心只有一份
 （`custom_components/taipower_estimate/calc.py`），package 測試拿它當對照答案。
 
-費率表（上方）是手抄的文件副本，調價時要跟 `tariff/rates.json` 一起改。台電調價時：見 [`AGENTS.md`](AGENTS.md)「調價 SOP」。變更紀錄見 [`CHANGELOG.md`](CHANGELOG.md)。
+費率表（上方）是手抄的文件副本，調價時要跟 `tariff/rates.json` 一起改。台電調價時：見 [`tariff/rates.json`](tariff/rates.json) 與上方「現行費率版本」。變更紀錄見 [`CHANGELOG.md`](CHANGELOG.md)。
+
+## Support 支持
+
+如果這個整合幫你省了查電費的時間，歡迎[請我喝杯飲料](https://drpwchen.com/support/) 🧋
