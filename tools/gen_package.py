@@ -18,6 +18,7 @@ import taipower_calc as calc  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 TMPL = ROOT / "tools" / "package.yaml.tmpl"
 DEFAULT_OUT = ROOT / "packages" / "taipower_estimate.yaml"
+COMPONENT_RATES = ROOT / "custom_components" / "taipower_estimate" / "rates.json"
 
 DEFAULTS = dict(
     profile="residential",
@@ -81,16 +82,27 @@ def main(argv=None) -> int:
     ap.add_argument("--check", action="store_true", help="只檢查 --out 是否與重產結果一致")
     a = ap.parse_args(argv)
     text = render(a.profile, a.months, a.source, a.cron, a.min_days)
+    rates_src = calc.RATES_PATH.read_text(encoding="utf-8")
     if a.check:
+        bad = 0
         if not a.out.exists() or a.out.read_text(encoding="utf-8") != text:
             print(f"DRIFT: {a.out} 與 rates.json／模板重產結果不同；重跑 python tools/gen_package.py", file=sys.stderr)
-            return 1
-        print("ok: package matches rates.json")
-        return 0
+            bad = 1
+        if not COMPONENT_RATES.exists() or COMPONENT_RATES.read_text(encoding="utf-8") != rates_src:
+            print(f"DRIFT: {COMPONENT_RATES} 與 tariff/rates.json 不同；重跑 python tools/gen_package.py", file=sys.stderr)
+            bad = 1
+        if not bad:
+            print("ok: package and integration match rates.json")
+        return bad
     a.out.parent.mkdir(parents=True, exist_ok=True)
     with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
     print(f"wrote {a.out}")
+    if a.out == DEFAULT_OUT:
+        # integration 內附的費率：tariff/rates.json 的逐字複本（HACS 只發 custom_components/ 底下的檔）
+        with open(COMPONENT_RATES, "w", encoding="utf-8", newline="") as f:
+            f.write(rates_src)
+        print(f"wrote {COMPONENT_RATES}")
     return 0
 
 

@@ -1,5 +1,9 @@
 # 給 AI agent：幫使用者個人化這個 package
 
+> **先問使用者用哪種裝法。** 用 HACS 整合的人不需要這份：電表 sensor、電價類別、抄表週期都在
+> 設定 → 裝置與服務 → Taipower Bill Estimate → 設定（選項）裡改，幫他對照電費單填欄位即可（欄位說明見 README「方法一」）。
+> 這份是給 **YAML package** 版用的。
+
 你（Claude Code、Codex 等）被請來把 `ha-taipower-estimate` 調成「這個使用者家裡」的版本。
 先讀完這份，再動手。原則：**只動產生器的參數；費率不憑記憶，一律以台電官方電價表為準；
 沒有跑過驗證不准說完成。**

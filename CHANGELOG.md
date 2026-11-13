@@ -2,6 +2,25 @@
 
 格式參考 Keep a Changelog；版本號：費率更新 → minor，邏輯修正 → patch。
 
+## [Unreleased] — 預定 0.2.0（等真實 HA 驗證後發版）
+
+### 新增
+
+- **HACS custom integration** `custom_components/taipower_estimate/`：UI 設定精靈（電表 sensor、電價類別、每月／兩個月、
+  抄表日、奇偶月、選填「這期已用度數」），之後可在選項修改。七個 sensor 語意對齊 package，entity_id 為 `sensor.taipower_*`。
+  - 自己追蹤抄表週期（不用 `utility_meter`），狀態存在 `.storage`，重開機不歸零；停機錯過抄表日會開新的一期並從開機起重量。
+  - 安裝在週期中途、沒填已用度數時，以實測每日用電外推（`partial_cycle`），第一期不再偏。
+  - 來源 sensor `unavailable` 期間的度數在恢復後補回；讀數掉到 90% 以下當成換表，小幅下降當成抖動。
+- `hacs.json`、GitHub Actions（hassfest、HACS validate、unittest、gen `--check`、pytest）。
+- 測試：`tests/test_cycle.py`（週期邏輯 23 個，不需 HA）、`tests_ha/`（HA core 2026.10.4 測試環境 7 個）。
+
+### 變更
+
+- 計算核心搬到 `custom_components/taipower_estimate/calc.py`，`tools/taipower_calc.py` 改為載入它（package 與整合同一份邏輯；
+  原有 38 個測試不變、全過）。
+- `tools/gen_package.py` 同時把 `tariff/rates.json` 複製進整合；`--check` 兩者都比對。
+- README：安裝改為 HACS 優先，package 保留為方法二。
+
 ## [0.1.0] - 2026-10-21
 
 ### 新增

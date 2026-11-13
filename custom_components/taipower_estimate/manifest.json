@@ -1,0 +1,13 @@
+{
+  "domain": "taipower_estimate",
+  "name": "Taipower Bill Estimate",
+  "codeowners": ["@drpwchen"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/drpwchen/ha-taipower-estimate",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/drpwchen/ha-taipower-estimate/issues",
+  "requirements": [],
+  "version": "0.2.0"
+}

@@ -1,0 +1,100 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "台電電費估算",
+        "description": "用你既有的電表 sensor 估算這期（一個月或兩個月）台電電費。費率內附，台電調價時更新 integration 即可。",
+        "data": {
+          "source": "電表總累積度數 sensor",
+          "profile": "電價類別",
+          "months": "抄表週期",
+          "reading_day": "抄表日（每期起算日，看電費單的計費期間）",
+          "reading_parity": "抄表月份（兩個月抄表才用得到）",
+          "initial_used": "這期已用度數（選填）"
+        },
+        "data_description": {
+          "source": "單位 kWh、只增不減的總累積讀數（state_class: total_increasing）。每天／每月自己歸零的 sensor 不能用。",
+          "reading_day": "該月沒有這天就用月底。到這天 00:00 這期歸零。",
+          "initial_used": "知道這期從抄表日到現在用了多少度就填，第一期就能準；不填則從現在開始量，以實測速率外推。"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "這個電表 sensor 已經設定過了。"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "台電電費估算選項",
+        "data": {
+          "source": "電表總累積度數 sensor",
+          "profile": "電價類別",
+          "months": "抄表週期",
+          "reading_day": "抄表日（每期起算日，看電費單的計費期間）",
+          "reading_parity": "抄表月份（兩個月抄表才用得到）"
+        },
+        "data_description": {
+          "source": "單位 kWh、只增不減的總累積讀數（state_class: total_increasing）。每天／每月自己歸零的 sensor 不能用。",
+          "reading_day": "該月沒有這天就用月底。到這天 00:00 這期歸零。"
+        }
+      }
+    }
+  },
+  "selector": {
+    "profile": {
+      "options": {
+        "residential": "住宅用",
+        "non_commercial": "住宅以外非營業用",
+        "commercial": "營業用"
+      }
+    },
+    "months": {
+      "options": {
+        "2": "兩個月一期",
+        "1": "每月一期"
+      }
+    },
+    "parity": {
+      "options": {
+        "odd": "奇數月（1、3、5…月）",
+        "even": "偶數月（2、4、6…月）"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "cycle_energy": {
+        "name": "本期已用度數"
+      },
+      "cycle_days": {
+        "name": "本期已量測天數"
+      },
+      "cycle_progress": {
+        "name": "本期進度"
+      },
+      "cycle_estimate": {
+        "name": "預估本期度數",
+        "state_attributes": {
+          "confidence": {
+            "name": "可信度",
+            "state": {
+              "low": "低（<7 天）",
+              "medium": "中（<21 天）",
+              "high": "高"
+            }
+          }
+        }
+      },
+      "cycle_summer_ratio": {
+        "name": "本期夏月占比"
+      },
+      "tier_price": {
+        "name": "級距電價"
+      },
+      "cycle_bill": {
+        "name": "預估電費"
+      }
+    }
+  }
+}
