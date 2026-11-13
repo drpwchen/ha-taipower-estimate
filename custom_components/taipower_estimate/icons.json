@@ -1,0 +1,21 @@
+{
+  "entity": {
+    "sensor": {
+      "cycle_days": {
+        "default": "mdi:calendar-clock"
+      },
+      "cycle_progress": {
+        "default": "mdi:progress-clock"
+      },
+      "cycle_estimate": {
+        "default": "mdi:chart-line"
+      },
+      "cycle_summer_ratio": {
+        "default": "mdi:white-balance-sunny"
+      },
+      "tier_price": {
+        "default": "mdi:stairs"
+      }
+    }
+  }
+}

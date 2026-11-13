@@ -2,6 +2,19 @@
 
 格式參考 Keep a Changelog；版本號：費率更新 → minor，邏輯修正 → patch。
 
+## [0.2.3] - 2026-11-14
+
+計算邏輯沒有改。
+
+### 變更
+
+- 整合版新增 `icons.json`：已量測天數、週期進度、預估整期度數、夏月占比、級距電價五個 sensor 有各自的圖示
+  （原本都是預設圖示）；已用度數與預估電費沿用 device class 圖示。
+- README 重排：開頭一句說明用途、badges、一鍵安裝擺最前，加上設定精靈與七個 sensor 的實機截圖（`docs/images/`）。
+- README 更正：sensor 顯示名稱跟著 HA 的**系統語言**（設定 → 系統 → 一般），不是個人帳號的介面語言。
+- README 新增說明：`sensor.taipower_tier_price` 放進 Energy 面板當電價時，算的是「目前級距單價 × 度數」，
+  不是逐級累進，總額會比 `sensor.taipower_cycle_bill` 高。
+
 ## [0.2.2] - 2026-11-14
 
 ### 修正

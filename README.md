@@ -1,43 +1,44 @@
-# ha-taipower-estimate
+# 台電電費估算 for Home Assistant（ha-taipower-estimate）
 
-台電**兩個月一期**（或每月一期）的電費估算，給 Home Assistant 用。兩種裝法：
-**HACS 整合**（UI 設定，不碰 YAML；建議）或 **YAML package**。都會多出七個 sensor：
-這期用了多少度、**過了幾天**（分母）、週期進度、預估整期度數、現在落在哪一級、預估電費。
+**還沒收到帳單，就知道這期電費大概多少。** 在 Home Assistant 介面點幾下就裝好，不用寫 YAML，
+用你家既有的電表 sensor 算出這期（兩個月或一個月）的預估度數、落在哪一級、預估電費。
 
-跟其他台電電費整合不一樣的地方：
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
+[![GitHub Release](https://img.shields.io/github/v/release/drpwchen/ha-taipower-estimate)](https://github.com/drpwchen/ha-taipower-estimate/releases)
+[![Validate](https://github.com/drpwchen/ha-taipower-estimate/actions/workflows/validate.yml/badge.svg)](https://github.com/drpwchen/ha-taipower-estimate/actions/workflows/validate.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## 一鍵安裝
+
+[![在 Home Assistant 開啟](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=drpwchen&repository=ha-taipower-estimate&category=integration)
+
+按上面的按鈕 → 在 Home Assistant 裡按 **Install** → 填設定精靈，就完成了。
+（2026.11 以上開內建 Marketplace，更舊的版本開 HACS；手動步驟見[安裝](#安裝)。）
+
+唯一的前提：你已經有一個**電表總累積度數**的 sensor（單位 kWh、只增不減，例如 Emporia、Shelly、智慧電表整合的 total energy）。
+
+## 長這樣
+
+設定精靈（中文介面下全中文；週期中途安裝也行，填「這期已用度數」第一期就準）：
+
+<img src="docs/images/setup-wizard.png" alt="設定精靈：選電表 sensor、電價類別、抄表週期、抄表日" width="560">
+
+裝好後多出七個 sensor（下圖是作者家實際運作中的數字，HA 系統語言設英文時的顯示）：
+
+<img src="docs/images/sensors.png" alt="七個 sensor：預估電費 NT$1,367、預估整期 656 度、已量測 32 天、這期已用 350 度、週期進度 53%、夏月占比、級距電價 2.26" width="560">
+
+這期用了 350 度、過了 32 天 → 外推整期 656 度 → 落在 2.26 元那一級 → 預估 1,367 元。每一步都是一個 sensor，
+可以放進儀表板、Energy 面板的電價，或寫成「預估電費超過 N 元就通知」。
+
+## 跟其他台電電費整合不一樣的地方
 
 - **看得到分母。** 「週期已過天數」是獨立的 sensor；分母不到 3 天，預估、電價、電費全部 `unavailable`，不會在抄表日 00:01 因為「一分鐘的用電 × 60 天」跳到最高級。
 - **只有一個地方會歸零**：抄表日 00:00（整合用設定裡的抄表日；package 用 `utility_meter` 的 cron）。沒有別的自動化在重設。
 - **沒有外部 API、沒有帳密、沒有 cookie。** 只吃你本來就有的電表總累積度數 sensor，所以不會因為台電改網站而壞。
-- **費率單一來源**：`tariff/rates.json`，每個數字附台電官方 PDF 連結。台電調價時改一個檔、跑一個指令、跑測試；
-  整合版發新版後 HACS 會提示更新，不用自己重抄 YAML。
+- **費率單一來源**：`tariff/rates.json`，每個數字附台電官方 PDF 連結。台電調價時發新版，Home Assistant 會提示更新，
+  不用自己重抄 YAML。
 
-> 授權：[MIT](LICENSE)。費率數字取自台電公開電價表，以台電官方公告為準。
-
-## 現行費率版本
-
-| 項目 | 內容 |
-|---|---|
-| 電價 | 表燈(住商)非時間電價（住宅用／住宅以外非營業用／營業用） |
-| 實施日 | **2025-10-01**（中華民國 114 年 10 月 1 日起實施；奉經濟部 114 年 9 月 26 日經能字第 11458000380 號函核定） |
-| 最後對照官方電價表 | 2026-10-14 |
-| 2026-03-27 審議會 | 決議電價不調整，維持平均電價 3.7823 元/度（[經濟部能源署](https://www.moea.gov.tw/MNS/populace/news/News.aspx?kind=1&menu_id=40&news_id=122235)） |
-| 2026-09-18 審議會 | 決議暫不調整，10 月起維持現行電價，留待 12 月審議會再議（2026-10-14 對照的官方電價表仍是 114-10-01 實施版） |
-
-住宅用（每月度數分段；**兩個月抄表時各段度數加倍**，台電電價表註記）：
-
-| 每月用電度數 | 夏月 6/1–9/30 | 非夏月 |
-|---|---|---|
-| 120 度以下 | 1.78 | 1.78 |
-| 121–330 | 2.55 | 2.26 |
-| 331–500 | 3.80 | 3.13 |
-| 501–700 | 5.14 | 4.24 |
-| 701–1000 | 6.44 | 5.27 |
-| 1001 以上 | 8.86 | 7.03 |
-
-來源（台電官方）：[簡要電價表 PDF](https://www.taipower.com.tw/media/dhuhrppu/%E7%B0%A1%E8%A6%81%E9%9B%BB%E5%83%B9%E8%A1%A8.pdf?mediaDL=true)、
-[詳細電價表 PDF](https://www.taipower.com.tw/media/xtofy2yw/%E8%A9%B3%E7%B4%B0%E9%9B%BB%E5%83%B9%E8%A1%A8.pdf?mediaDL=true)、
-[電價表頁](https://www.taipower.com.tw/2289/2290/46940/)。完整清單在 `tariff/rates.json`。
+> 授權：[MIT](LICENSE)。費率數字取自台電公開電價表，以台電官方公告為準。這是估算，不是帳單——先看[限制](#限制先讀完再信數字)。
 
 ## 安裝
 
@@ -46,9 +47,7 @@
 
 ### 方法一：Marketplace／HACS 整合（建議）
 
-[![在 Home Assistant 開啟](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=drpwchen&repository=ha-taipower-estimate&category=integration)
-
-上面的按鈕會直接開到這個 repo（2026.11 以上開 Marketplace，更舊的版本開 HACS）。要手動加的話：
+最快是用上面的[一鍵安裝](#一鍵安裝)按鈕。要手動加的話：
 
 **Home Assistant 2026.11 以上（內建 Marketplace）**
 
@@ -66,17 +65,17 @@
 
 設定精靈的欄位：
 
-   | 欄位 | 填什麼 |
-   |---|---|
-   | 電表總累積度數 sensor | 你的總累積 kWh sensor |
-   | 電價類別 | 住宅用／住宅以外非營業用／營業用 |
-   | 抄表週期 | 兩個月一期／每月一期 |
-   | 抄表日 | 看電費單的「計費期間」起日；該月沒有這天就用月底 |
-   | 抄表月份 | 兩個月一期才用得到：奇數月（1、3、5…）或偶數月（2、4、6…） |
-   | 這期已用度數（選填） | 知道從這期抄表日到現在用了多少度就填，第一期就準 |
+| 欄位 | 填什麼 |
+|---|---|
+| 電表總累積度數 sensor | 你的總累積 kWh sensor |
+| 電價類別 | 住宅用／住宅以外非營業用／營業用 |
+| 抄表週期 | 兩個月一期／每月一期 |
+| 抄表日 | 看電費單的「計費期間」起日；該月沒有這天就用月底 |
+| 抄表月份 | 兩個月一期才用得到：奇數月（1、3、5…）或偶數月（2、4、6…） |
+| 這期已用度數（選填） | 知道從這期抄表日到現在用了多少度就填，第一期就準 |
 
-   「這期已用度數」不填也可以：從裝好那一刻開始量，用實測的每日用電外推整期（`partial_cycle` 屬性為 `true`），
-   不會像 package 版那樣第一期偏掉。之後要改設定：整合頁面 → **設定（選項）**。
+「這期已用度數」不填也可以：從裝好那一刻開始量，用實測的每日用電外推整期（`partial_cycle` 屬性為 `true`），
+不會像 package 版那樣第一期偏掉。之後要改設定：整合頁面 → **設定（選項）**。
 
 台電調價時：發新版後會出現在 設定 → 更新（Marketplace 對手動加入的 repo 每 48 小時檢查一次），更新即可。
 
@@ -117,9 +116,38 @@ python tools/gen_package.py --profile commercial --months 1 --out my_package.yam
 | `sensor.taipower_tier_price` | `sensor.power_tier_price` | 以預估度數落在的級距，每度電價（夏月／非夏月依天數加權） |
 | `sensor.taipower_cycle_bill` | `sensor.power_cycle_bill` | 預估電費（逐級累進加總，元） |
 
-（單月一期時，上表的 60 換成 30。整合版的顯示名稱跟著 HA 介面語言，entity_id 固定用上面的英文。）
+（單月一期時，上表的 60 換成 30。整合版的 sensor 顯示名稱跟著 HA 的**系統語言**（設定 → 系統 → 一般），
+不是個人帳號的介面語言；設定精靈則跟著介面語言。entity_id 固定用上面的英文。）
 
 想在預估電費超過某個數字時通知：條件加 `confidence == 'high'`，通知只在分母夠大時才會說話。
+
+`sensor.taipower_tier_price` 可以填進 Energy 面板電網來源的「電價 entity」，讓 Energy 面板也顯示花費。注意那是「目前級距單價 × 用電」，
+不是逐級累進，總額會比 `sensor.taipower_cycle_bill` 高；要看這期電費以 `cycle_bill` 為準。
+
+## 現行費率版本
+
+| 項目 | 內容 |
+|---|---|
+| 電價 | 表燈(住商)非時間電價（住宅用／住宅以外非營業用／營業用） |
+| 實施日 | **2025-10-01**（中華民國 114 年 10 月 1 日起實施；奉經濟部 114 年 9 月 26 日經能字第 11458000380 號函核定） |
+| 最後對照官方電價表 | 2026-10-14 |
+| 2026-03-27 審議會 | 決議電價不調整，維持平均電價 3.7823 元/度（[經濟部能源署](https://www.moea.gov.tw/MNS/populace/news/News.aspx?kind=1&menu_id=40&news_id=122235)） |
+| 2026-09-18 審議會 | 決議暫不調整，10 月起維持現行電價，留待 12 月審議會再議（2026-10-14 對照的官方電價表仍是 114-10-01 實施版） |
+
+住宅用（每月度數分段；**兩個月抄表時各段度數加倍**，台電電價表註記）：
+
+| 每月用電度數 | 夏月 6/1–9/30 | 非夏月 |
+|---|---|---|
+| 120 度以下 | 1.78 | 1.78 |
+| 121–330 | 2.55 | 2.26 |
+| 331–500 | 3.80 | 3.13 |
+| 501–700 | 5.14 | 4.24 |
+| 701–1000 | 6.44 | 5.27 |
+| 1001 以上 | 8.86 | 7.03 |
+
+來源（台電官方）：[簡要電價表 PDF](https://www.taipower.com.tw/media/dhuhrppu/%E7%B0%A1%E8%A6%81%E9%9B%BB%E5%83%B9%E8%A1%A8.pdf?mediaDL=true)、
+[詳細電價表 PDF](https://www.taipower.com.tw/media/xtofy2yw/%E8%A9%B3%E7%B4%B0%E9%9B%BB%E5%83%B9%E8%A1%A8.pdf?mediaDL=true)、
+[電價表頁](https://www.taipower.com.tw/2289/2290/46940/)。完整清單在 `tariff/rates.json`。
 
 ## 限制（先讀完再信數字）
 
