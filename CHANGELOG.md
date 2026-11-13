@@ -2,6 +2,14 @@
 
 格式參考 Keep a Changelog；版本號：費率更新 → minor，邏輯修正 → patch。
 
+## [0.2.2] - 2026-11-14
+
+### 修正
+
+- 整合版 `sensor.taipower_cycle_bill`（預估電費）加上 `state_class: total`：之前沒有 state_class，HA 不留長期統計，
+  statistics-graph 畫不出電費趨勢。圖卡請用 `stat_types: state`（monetary 只允許 total，沒有 mean）。
+- package 版 `sensor.power_cycle_bill` 加上 `state_class: measurement`，同樣為了長期統計。
+
 ## [0.2.1] - 2026-11-14
 
 程式邏輯沒有改，只更新文件與版本號。

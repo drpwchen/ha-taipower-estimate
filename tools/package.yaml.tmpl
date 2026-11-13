@@ -85,6 +85,7 @@ template:
       - name: Power cycle bill
         unique_id: power_cycle_bill
         unit_of_measurement: TWD
+        state_class: measurement
         availability: "{{ has_value('sensor.power_cycle_estimate') and has_value('sensor.power_cycle_summer_ratio') }}"
         state: >-
           {% set kwh = states('sensor.power_cycle_estimate') | float(0) %}

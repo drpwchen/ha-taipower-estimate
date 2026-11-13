@@ -94,6 +94,8 @@ SENSORS: tuple[TaipowerSensorDescription, ...] = (
         translation_key="cycle_bill",
         native_unit_of_measurement="TWD",
         device_class=SensorDeviceClass.MONETARY,
+        # monetary 只允許 total；有 state_class 才有長期統計（statistics-graph 用 stat_types: state）
+        state_class=SensorStateClass.TOTAL,
         suggested_display_precision=0,
         value_fn=lambda s: s.bill,
     ),

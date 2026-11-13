@@ -85,6 +85,7 @@ async def test_accumulates_and_extrapolates(hass: HomeAssistant, tz, freezer: Fr
     assert float(val(hass, "cycle_summer_ratio")) == 1.0
     assert float(val(hass, "tier_price")) == 3.80
     assert val(hass, "cycle_bill") == "2068"                     # 1.78×240 + 2.55×420 + 3.80×150 = 2068.2
+    assert hass.states.get("sensor.taipower_cycle_bill").attributes["state_class"] == "total"  # 長期統計
     est = hass.states.get("sensor.taipower_cycle_estimate")
     assert est.attributes["confidence"] == "medium"
     assert hass.states.get("sensor.taipower_cycle_energy").attributes["partial_cycle"] is False
