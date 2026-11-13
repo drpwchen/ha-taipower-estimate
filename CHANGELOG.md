@@ -2,7 +2,11 @@
 
 格式參考 Keep a Changelog；版本號：費率更新 → minor，邏輯修正 → patch。
 
-## [Unreleased] — 預定 0.2.0（等真實 HA 驗證後發版）
+## [0.2.0] - 2026-11-14
+
+> 整合版尚未在真實運作中的 Home Assistant 驗證（測試在 HA core 測試環境），見 README「限制」。
+>
+> 安裝：Home Assistant 2026.11 以上 → 設定 → Marketplace → Add from link → `drpwchen/ha-taipower-estimate`；舊版用 HACS Custom repositories。
 
 ### 新增
 
