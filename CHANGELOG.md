@@ -2,9 +2,19 @@
 
 格式參考 Keep a Changelog；版本號：費率更新 → minor，邏輯修正 → patch。
 
+## [0.2.1] - 2026-11-14
+
+程式邏輯沒有改，只更新文件與版本號。
+
+### 變更
+
+- 整合版已在一台真實運作的 Home Assistant 2026.11.1 上驗證：Marketplace 安裝、設定精靈（週期中途安裝並填入已用度數）、
+  在選項裡換來源電表（已用度數保留，只重設基準）都正常，七個 sensor 數值與參考實作一致。
+  README「限制」改成照實寫明已驗證的範圍，以及還沒驗證的兩項：實際跨過抄表日、和台電帳單的比對。package 版仍未在真實 HA 驗證。
+
 ## [0.2.0] - 2026-11-14
 
-> 整合版尚未在真實運作中的 Home Assistant 驗證（測試在 HA core 測試環境），見 README「限制」。
+> 整合版尚未在真實運作中的 Home Assistant 驗證（測試在 HA core 測試環境），見 README「限制」。（0.2.1 已更新）
 >
 > 安裝：Home Assistant 2026.11 以上 → 設定 → Marketplace → Add from link → `drpwchen/ha-taipower-estimate`；舊版用 HACS Custom repositories。
 

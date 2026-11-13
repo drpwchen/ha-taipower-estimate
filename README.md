@@ -132,9 +132,12 @@ python tools/gen_package.py --profile commercial --months 1 --out my_package.yam
 - 整合版：Home Assistant 關機時跨過抄表日，開機後會開新的一期，但停機期間的度數分不出屬於哪一期，
   所以從開機那刻重新量（`partial_cycle: true`）。電表讀數掉到上次的 90% 以下當成換表／電表歸零；小幅下降當成抖動忽略。
 - 週期固定當 60 天（單月 30 天）外推；實際抄表間隔 59–62 天的誤差沒有修正。
-- **兩種裝法都還沒有在真實運作中的 Home Assistant 上跑過。** package 版的測試是把 YAML 裡的 Jinja 模板用模擬的 HA 函式渲染、
-  對照參考實作；整合版的測試在 Home Assistant core 2026.10.4 的測試環境（`pytest-homeassistant-custom-component`）裡
-  跑設定精靈、讀數累積、抄表日歸零、重新載入、改選項，但那不是一台真的 HA。第一次裝請對照你的電費單。
+- **整合版已在一台真實運作的 Home Assistant（2026.11.1）上跑過**：用 Marketplace 安裝、設定精靈（週期中途安裝並填入
+  「這期已用度數」）、在選項裡換來源電表，七個 sensor 都正常，數字與參考實作一致。==還沒驗證到的==：實際跨過抄表日的
+  歸零、和台電實際帳單的比對。整合版另有 HA core 2026.10.4 測試環境（`pytest-homeassistant-custom-component`）的自動測試
+  （設定精靈、讀數累積、抄表日歸零、重新載入、改選項）。
+- **package 版還沒有在真實運作中的 Home Assistant 上跑過**：測試是把 YAML 裡的 Jinja 模板用模擬的 HA 函式渲染、對照參考實作。
+  第一次裝請對照你的電費單。
 - `hacs.json` 標的最低版本 2024.12 是依程式用到的 API 推估，沒有在舊版 HA 實測。
 
 ## 開發與測試
