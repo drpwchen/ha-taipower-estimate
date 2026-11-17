@@ -13,7 +13,7 @@
           "initial_used": "kWh already used this period (optional)"
         },
         "data_description": {
-          "source": "Cumulative kWh reading that only increases. Sensors that reset daily/monthly won't work.",
+          "source": "Cumulative kWh sensor (state_class: total_increasing). If you only have a power (W) sensor, create an Integration helper to turn it into kWh first; Emporia Vue users: use a kWh sensor such as *_1mon. See the README.",
           "reading_day": "Clamped to month end. The period resets at 00:00 on this day.",
           "initial_used": "If you know this period's usage so far, fill it in; otherwise measuring starts now and the estimate extrapolates the measured rate."
         }
@@ -21,6 +21,10 @@
     },
     "abort": {
       "already_configured": "This meter sensor is already configured."
+    },
+    "error": {
+      "source_is_power": "That is a power (W/kW) sensor, not accumulated energy. Create an Integration helper that integrates it into kWh first, then pick the helper. How: {integration_doc}",
+      "source_not_kwh": "That sensor's unit is not kWh (Wh/MWh would be off by 1000x). Pick a kWh sensor, or convert it with a template/Integration helper. See: {integration_doc}"
     }
   },
   "options": {
@@ -35,10 +39,14 @@
           "reading_parity": "Reading months (bimonthly only)"
         },
         "data_description": {
-          "source": "Cumulative kWh reading that only increases. Sensors that reset daily/monthly won't work.",
+          "source": "Cumulative kWh sensor (state_class: total_increasing). If you only have a power (W) sensor, create an Integration helper to turn it into kWh first; Emporia Vue users: use a kWh sensor such as *_1mon. See the README.",
           "reading_day": "Clamped to month end. The period resets at 00:00 on this day."
         }
       }
+    },
+    "error": {
+      "source_is_power": "That is a power (W/kW) sensor, not accumulated energy. Create an Integration helper that integrates it into kWh first, then pick the helper. How: {integration_doc}",
+      "source_not_kwh": "That sensor's unit is not kWh (Wh/MWh would be off by 1000x). Pick a kWh sensor, or convert it with a template/Integration helper. See: {integration_doc}"
     }
   },
   "selector": {

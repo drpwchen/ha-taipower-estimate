@@ -5,7 +5,7 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 
 from .const import (
@@ -25,6 +25,7 @@ from .const import (
 )
 
 TITLE = "台電電費估算"
+HELPER_DOC_URL = "https://github.com/drpwchen/ha-taipower-estimate#只有功率-sensor-或用-emporia-vue"
 
 
 def _cycle_fields(d: dict) -> dict:
@@ -48,9 +49,33 @@ def _cycle_fields(d: dict) -> dict:
     }
 
 
+POWER_UNITS = {"W", "kW", "MW", "GW", "mW"}
+NON_KWH_ENERGY_UNITS = {"Wh", "MWh", "GWh", "mWh"}
+
+
 def _source_field(default: str | None = None) -> dict:
+    # 也列出功率（power）sensor：新手常只有「每分鐘平均功率」，選了以後給明確的下一步，
+    # 而不是在清單裡找不到自己的 sensor。
     key = vol.Required(CONF_SOURCE, default=default) if default else vol.Required(CONF_SOURCE)
-    return {key: selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class="energy"))}
+    return {key: selector.EntitySelector(
+        selector.EntitySelectorConfig(domain="sensor", device_class=["energy", "power"]))}
+
+
+def source_error(hass: HomeAssistant, entity_id: str) -> str | None:
+    """選到的 sensor 不能直接當來源時回傳錯誤鍵（對應 translations 的 error）；可以用或查不到屬性就回 None。
+
+    只擋「確定是錯的」：功率 sensor（要先用 Integration helper 積成 kWh）、單位是 Wh／MWh（程式不換算，會差 1000 倍）。
+    沒有屬性（還沒有狀態）就放行，不阻擋設定。
+    """
+    st = hass.states.get(entity_id)
+    if st is None:
+        return None
+    unit = st.attributes.get("unit_of_measurement")
+    if st.attributes.get("device_class") == "power" or unit in POWER_UNITS:
+        return "source_is_power"
+    if unit in NON_KWH_ENERGY_UNITS:
+        return "source_not_kwh"
+    return None
 
 
 def _normalize(user_input: dict) -> dict:
@@ -66,20 +91,25 @@ class TaipowerConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            await self.async_set_unique_id(user_input[CONF_SOURCE])
-            self._abort_if_unique_id_configured()
-            return self.async_create_entry(title=TITLE, data=_normalize(user_input))
+            if err := source_error(self.hass, user_input[CONF_SOURCE]):
+                errors["source"] = err
+            else:
+                await self.async_set_unique_id(user_input[CONF_SOURCE])
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(title=TITLE, data=_normalize(user_input))
 
         schema = {
-            **_source_field(),
-            **_cycle_fields({}),
+            **_source_field((user_input or {}).get(CONF_SOURCE)),
+            **_cycle_fields(user_input or {}),
             vol.Optional(CONF_INITIAL_USED): selector.NumberSelector(
                 selector.NumberSelectorConfig(min=0, step=0.1, unit_of_measurement="kWh",
                                               mode=selector.NumberSelectorMode.BOX)
             ),
         }
-        return self.async_show_form(step_id="user", data_schema=vol.Schema(schema))
+        return self.async_show_form(step_id="user", data_schema=vol.Schema(schema), errors=errors,
+                                    description_placeholders={"integration_doc": HELPER_DOC_URL})
 
     @staticmethod
     @callback
@@ -89,8 +119,13 @@ class TaipowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
 class TaipowerOptionsFlow(OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(data=_normalize(user_input))
-        current = {**self.config_entry.data, **self.config_entry.options}
+            if err := source_error(self.hass, user_input[CONF_SOURCE]):
+                errors["source"] = err
+            else:
+                return self.async_create_entry(data=_normalize(user_input))
+        current = {**self.config_entry.data, **self.config_entry.options, **(user_input or {})}
         schema = {**_source_field(current[CONF_SOURCE]), **_cycle_fields(current)}
-        return self.async_show_form(step_id="init", data_schema=vol.Schema(schema))
+        return self.async_show_form(step_id="init", data_schema=vol.Schema(schema), errors=errors,
+                                    description_placeholders={"integration_doc": HELPER_DOC_URL})

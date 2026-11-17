@@ -2,6 +2,24 @@
 
 格式參考 Keep a Changelog；版本號：費率更新 → minor，邏輯修正 → patch。
 
+## [0.2.5] - 2026-11-18
+
+### 新增
+
+- 整合品牌圖：`custom_components/taipower_estimate/brand/icon.png`（256×256）與 `icon@2x.png`（512×512），透明背景。
+  Home Assistant 2026.3 起，custom integration 把圖放在自己的 `brand/` 資料夾就會顯示；之前沒有附，
+  整合頁左上角是「icon not available」。圖是自己畫的（帳單＋閃電），沒有用台電或其他商標；
+  原稿 `docs/brand/icon.svg`，重畫用 `python tools/gen_brand.py`。
+- 設定精靈（含選項）選到功率（W／kW）sensor 或 Wh／MWh sensor 時直接擋下並說明怎麼辦，不再讓人裝完才發現度數不對。
+  來源選單現在也列出功率 sensor，選了會得到明確的下一步，而不是在清單裡找不到自己的 sensor。
+
+### 變更
+
+- README：新增「只有功率 sensor 或用 Emporia Vue」（Integration helper 設定：積分方法、前綴 k、時間單位 h、最大子區間）、
+  「常見卡關」；更正「每天／每月歸零的 sensor 不能用」——整合版把讀數掉到上次 90% 以下當成歸零，會歸零的 kWh sensor 可以用，
+  只是歸零前後幾分鐘的度數會漏。
+- 測試：`tests/test_brand.py`、`tests_ha/` 新增設定精靈／選項擋功率與 Wh sensor 的測試。
+
 ## [0.2.4] - 2026-11-14
 
 程式邏輯沒有改。

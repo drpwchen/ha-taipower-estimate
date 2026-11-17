@@ -169,3 +169,41 @@ async def test_remove_entry_deletes_storage(hass: HomeAssistant, tz, hass_storag
     await hass.config_entries.async_remove(entry.entry_id)
     await hass.async_block_till_done()
     assert key not in hass_storage
+
+
+FORM = {"profile": "residential", "months": "2", "reading_day": 13, "reading_parity": "odd"}
+
+
+@pytest.mark.parametrize(
+    ("attrs", "error"),
+    [
+        ({"unit_of_measurement": "W", "device_class": "power"}, "source_is_power"),
+        ({"unit_of_measurement": "kW"}, "source_is_power"),                  # 沒標 device_class 也靠單位擋
+        ({"unit_of_measurement": "Wh", "device_class": "energy"}, "source_not_kwh"),
+    ],
+)
+async def test_config_flow_rejects_unusable_source(hass: HomeAssistant, tz, attrs, error) -> None:
+    hass.states.async_set("sensor.vue_1min", "850", attrs)
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": "sensor.vue_1min", **FORM})
+    assert result["type"] is FlowResultType.FORM                  # 留在表單，不建立 entry
+    assert result["errors"] == {"source": error}
+    assert not hass.config_entries.async_entries(DOMAIN)
+
+    # 改選 kWh 累積 sensor 就能過
+    hass.states.async_set(SRC, "1000", {"unit_of_measurement": "kWh", "device_class": "energy"})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": SRC, **FORM})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_options_flow_rejects_power_source(hass: HomeAssistant, tz, freezer) -> None:
+    freezer.move_to(local(2026, 7, 13, 0, 0))
+    hass.states.async_set(SRC, "8000", {"unit_of_measurement": "kWh", "device_class": "energy"})
+    entry = await setup_entry(hass)
+    hass.states.async_set("sensor.vue_1min", "850", {"unit_of_measurement": "W", "device_class": "power"})
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"source": "sensor.vue_1min", **FORM})
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"source": "source_is_power"}
+    assert entry.options == {}                                    # 沒存進去

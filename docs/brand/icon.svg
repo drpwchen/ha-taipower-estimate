@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="256" height="256">
+  <title>Taipower Bill Estimate</title>
+  <circle cx="256" cy="256" r="240" fill="#1565C0"/>
+  <polygon points="140,92 372,92 372,404 352.67,380 333.33,404 314,380 294.67,404 275.33,380 256,404 236.67,380 217.33,404 198,380 178.67,404 159.33,380 140,404" fill="#FFFFFF"/>
+  <rect x="176" y="140" width="160" height="18" rx="9" fill="#B0BEC5"/>
+  <rect x="176" y="188" width="124" height="18" rx="9" fill="#B0BEC5"/>
+  <rect x="176" y="236" width="92" height="18" rx="9" fill="#B0BEC5"/>
+  <polygon points="330,196 232,330 290,330 262,452 396,282 332,282 366,196" fill="#FFB300" stroke="#1565C0" stroke-width="14" stroke-linejoin="round" paint-order="stroke"/>
+</svg>

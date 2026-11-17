@@ -17,7 +17,8 @@
 按上面的按鈕 → 在 Home Assistant 裡按 **Install** → 填設定精靈，就完成了。
 （2026.11 以上開內建 Marketplace，更舊的版本開 HACS；手動步驟見[安裝](#安裝)。）
 
-唯一的前提：你已經有一個**電表總累積度數**的 sensor（單位 kWh、只增不減，例如 Emporia、Shelly、智慧電表整合的 total energy）。
+唯一的前提：你已經有一個**電表累積度數**的 sensor（單位 kWh、只增不減，例如 Emporia、Shelly、智慧電表整合的 total energy）。
+如果你只有「功率（W）」的 sensor，或用的是 Emporia Vue，先看[只有功率 sensor 或用 Emporia Vue](#只有功率-sensor-或用-emporia-vue)，多一步就好。
 
 **需求與費用**：Home Assistant（`hacs.json` 標的最低版本為 2024.12）；不需要 GPU、帳號或 API key，免費。
 
@@ -48,8 +49,48 @@
 
 ## 安裝
 
-兩種裝法都需要一個**電表總累積度數**的 sensor（單位 kWh、只增不減，`state_class: total_increasing`）。
-每天／每月自己歸零的 sensor 不能當來源。
+兩種裝法都需要一個**電表累積度數**的 sensor（單位 kWh、只增不減，`state_class: total_increasing`）。
+只有功率（W／kW）的 sensor 不能直接用，做法見下一節。
+
+### 只有功率 sensor 或用 Emporia Vue
+
+**先分辨你的 sensor 是哪一種**（開發者工具 → 狀態，看單位）：
+
+| 單位 | 是什麼 | 能不能當來源 |
+|---|---|---|
+| kWh，一直往上加 | 累積度數 | ✅ 直接用 |
+| kWh，但每天／每月歸零（例如 Emporia 的 `*_1d`、`*_1mon`） | 一段時間內的度數 | ⚠️ 整合版可用，見下 |
+| W／kW | 功率（現在用多快） | ❌ 要先用 Integration helper 積成 kWh |
+| Wh／MWh | 單位差 1000 倍 | ❌ 先換成 kWh |
+
+設定精靈會擋掉功率與 Wh 的 sensor，並提示該怎麼做，不會讓你裝完才發現度數不對。
+
+**只有功率 sensor：建一個 Integration helper**（做法依 [Integral 官方文件](https://www.home-assistant.io/integrations/integration/)）
+
+1. 設定 → 裝置與服務 → **輔助程式（Helpers）** → 建立輔助程式 → **積分感測器（Integral sensor）**。
+2. 填：
+   - **輸入感測器**：你的功率 sensor。
+   - **積分方法**：來源是「每分鐘平均」或會長時間維持同一個值的功率，選 **left**（官方文件：來源長時間不變時，left 比 trapezoidal 準）；
+     來源是連續變動、每幾秒更新的瞬時功率，選 **trapezoidal**。
+   - **公制前綴（Metric prefix）**：來源單位是 W 選 **k**（W → kW）；來源已經是 kW 就不選。
+   - **時間單位（Time unit）**：**小時（h）**。合起來輸出單位是 kWh。
+   - **最大子區間（Max sub-interval）**（選填）：來源沒變化時也定時積分，例如 `00:01:00`。功率很穩定、很少更新的 sensor 建議設。
+3. 建好後，在這個整合的設定精靈選**那個 helper**，不要選原本的功率 sensor。
+
+注意：helper 從建立那刻從 0 開始積，所以第一期請在精靈的「這期已用度數」填你從抄表日到現在用了多少度，第一期才準。
+
+**用 Emporia Vue 的人**
+
+Emporia Vue 整合（HACS 的 `emporia_vue`）每個頻道會產生同一種量測的好幾個時間窗口版本，名稱結尾像 `_1min`、`_1d`、`_1mon`；
+名稱與單位**以你自己的實體清單為準**，先看單位再選：
+
+- 選**單位是 kWh、結尾 `_1mon`（或你的總電表頻道）**的 sensor。作者家就是這樣用：來源 `sensor.energy_monitor_123_1mon`，偶數月 13 日抄表。
+- 整合版會把「讀數掉到上次的 90% 以下」當成歸零、把新讀數算成新增度數，所以每月自己歸零的 kWh sensor 可以用；
+  代價是歸零前後那幾分鐘的度數會漏掉一點點。package 版（`utility_meter`）請用累積型 sensor。
+- 單位是 **kW／W 的 `_1min`**（每分鐘平均功率）：照上面「只有功率 sensor」建 Integration helper，方法選 **left**，前綴 **k**，時間單位 **h**。
+- 要選**總用電**那個頻道（主電表／Mains／Total），不是單一迴路；多個頻道加起來才是整戶用電。
+
+選錯單位的話，設定精靈會直接提示，不用猜。
 
 ### 方法一：Marketplace／HACS 整合（建議）
 
@@ -84,6 +125,16 @@
 不會像 package 版那樣第一期偏掉。之後要改設定：整合頁面 → **設定（選項）**。
 
 台電調價時：發新版後會出現在 設定 → 更新（Marketplace 對手動加入的 repo 每 48 小時檢查一次），更新即可。
+
+**常見卡關**
+
+- **選單裡找不到我的 sensor**：選單只列 device class 是能量（energy）或功率（power）的 sensor。找不到多半是來源沒設好 device class；
+  先在 開發者工具 → 狀態 確認它有 `unit_of_measurement` 和 `device_class`，或用上面的 Integration helper 建一個乾淨的 kWh sensor。
+- **選了功率 sensor 出現錯誤**：照[上一節](#只有功率-sensor-或用-emporia-vue)建 helper，改選 helper。
+- **預估電費是 `unavailable`**：這期才量測不到 3 天（刻意的，見上面「看得到分母」）。填「這期已用度數」可以讓第一期一開始就有數字。
+- **抄表日不知道填哪天**：看電費單的「計費期間」起日；兩個月一期再選奇數月或偶數月（計費期間起日落在哪個月）。
+- **整合頁左上角的小圖示是空白（icon not available）**：Home Assistant 2026.3 起才會讀整合內附的 `brand/` 圖，
+  本整合 0.2.5 開始附圖；更新後重啟 Home Assistant、重新整理頁面。更舊的 Home Assistant 版本沒有這個功能，只是沒圖，不影響計算。
 
 ### 方法二：YAML package
 
@@ -180,6 +231,7 @@ python tools/gen_package.py --profile commercial --months 1 --out my_package.yam
 pip install pyyaml jinja2
 python -m unittest discover -s tests -v   # 計算、週期邏輯、YAML 模板（不需要 Home Assistant）
 python tools/gen_package.py --check       # 已 commit 的 YAML、整合內附的 rates.json 與 tariff/rates.json 是否一致
+python tools/gen_brand.py                 # 重畫整合品牌圖 brand/icon.png、icon@2x.png（需要 Pillow；原稿 docs/brand/icon.svg）
 
 # 整合在 HA core 裡的測試（Linux／WSL／macOS；HA 不支援 Windows，Python 3.14）
 pip install pytest-homeassistant-custom-component

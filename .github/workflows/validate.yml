@@ -20,7 +20,7 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          ignore: brands   # 圖示還沒送進 home-assistant/brands；送 hacs/default 前要補
+          ignore: brands   # 圖示已內附在 custom_components/taipower_estimate/brand/（HA 2026.3 起可用）；HACS action 是否認內附圖還沒確認，先維持忽略
 
   tests:
     runs-on: ubuntu-latest
