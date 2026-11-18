@@ -2,6 +2,20 @@
 
 格式參考 Keep a Changelog；版本號：費率更新 → minor，邏輯修正 → patch。
 
+## [0.2.6] - 2026-11-18
+
+### 新增
+
+- 設定精靈認得 Emporia Vue（從 entity registry 的 platform `emporia_vue` 判斷）：有整戶頻道（`1,2,3`）的 `_1mon`（本月 kWh）且只有一個時，
+  來源欄位預設選它。選到 Vue 的功率 sensor（`_1min`）或每日 sensor（`_1d`）時，若同一迴路有可用的 `_1mon`，就擋下並指名該選哪個、把表單預設改填它
+  （設定與選項都一樣）。找不到可推薦的 `_1mon` 時維持原本的錯誤（功率 sensor 照舊擋、每日 sensor 照舊放行）。
+
+### 變更
+
+- README「用 Emporia Vue 的人」改寫成實際資料：`_1min` 是功率（W，`measurement`）、`_1d`／`_1mon` 是 kWh（`energy`，state class `total`、會歸零），
+  建議來源選 `_1mon`，並說明歸零日是 Emporia app 的計費起算日、不必和台電抄表日對齊，整合版怎麼接歸零；附 `emporia_vue` 原始碼出處。
+- 設定精靈說明文字：Emporia Vue 請選整戶的 `*_1mon`，不要選 `*_1min` 或 `*_1d`。
+
 ## [0.2.5] - 2026-11-18
 
 ### 新增

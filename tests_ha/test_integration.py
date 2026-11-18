@@ -207,3 +207,110 @@ async def test_options_flow_rejects_power_source(hass: HomeAssistant, tz, freeze
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"source": "source_is_power"}
     assert entry.options == {}                                    # 沒存進去
+
+
+# ---- Emporia Vue：entity registry 認出 platform emporia_vue，建議同迴路的 `_1mon` ----
+
+def add_vue_channel(hass, channel, name, scales=("instant", "1D", "1MON"), disabled=()):
+    """照 emporia_vue 原始碼的命名建一個迴路：每個迴路一個 device，三個 sensor（`_1min`／`_1d`／`_1mon`）。"""
+    from homeassistant.helpers import device_registry as dr, entity_registry as er
+    cfg = MockConfigEntry(domain="emporia_vue", title="Emporia Vue")
+    cfg.add_to_hass(hass)
+    dev = dr.async_get(hass).async_get_or_create(config_entry_id=cfg.entry_id,
+                                                 identifiers={("emporia_vue", f"123456-{channel}")})
+    ids = {}
+    for scale in scales:
+        suffix = {"instant": "1min", "1D": "1d", "1MON": "1mon"}[scale]
+        e = er.async_get(hass).async_get_or_create(
+            "sensor", "emporia_vue", f"sensor.emporia_vue.{scale}.123456-{channel}",
+            config_entry=cfg, device_id=dev.id, suggested_object_id=f"{name}_{suffix}",
+            disabled_by=er.RegistryEntryDisabler.USER if scale in disabled else None)
+        ids[suffix] = e.entity_id
+    return ids
+
+
+async def test_vue_power_sensor_points_to_same_circuit_month(hass: HomeAssistant, tz) -> None:
+    vue = add_vue_channel(hass, "1,2,3", "energy_monitor_123")
+    other = add_vue_channel(hass, "7", "dryer")                       # 別的迴路不能被推薦
+    hass.states.async_set(vue["1min"], "330", {"unit_of_measurement": "W", "device_class": "power"})
+    hass.states.async_set(vue["1mon"], "239.3", {"unit_of_measurement": "kWh", "device_class": "energy"})
+    assert vue["1mon"] == "sensor.energy_monitor_123_1mon" and other["1mon"] != vue["1mon"]
+
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": vue["1min"], **FORM})
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"source": "source_vue_power"}
+    assert result["description_placeholders"]["suggestion"] == "sensor.energy_monitor_123_1mon"
+    assert source_default(result) == "sensor.energy_monitor_123_1mon"   # 重新顯示的表單已改填建議
+
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": vue["1mon"], **FORM})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"]["source"] == "sensor.energy_monitor_123_1mon"
+
+
+async def test_vue_day_sensor_is_steered_to_month(hass: HomeAssistant, tz) -> None:
+    vue = add_vue_channel(hass, "1,2,3", "energy_monitor_123")
+    hass.states.async_set(vue["1d"], "5.1", {"unit_of_measurement": "kWh", "device_class": "energy"})
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": vue["1d"], **FORM})
+    assert result["errors"] == {"source": "source_vue_day"}
+    assert result["description_placeholders"]["suggestion"] == vue["1mon"]
+    assert not hass.config_entries.async_entries(DOMAIN)
+
+
+async def test_vue_without_enabled_month_falls_back_to_generic_power_error(hass: HomeAssistant, tz) -> None:
+    vue = add_vue_channel(hass, "1,2,3", "energy_monitor_123", disabled=("1MON",))
+    hass.states.async_set(vue["1min"], "330", {"unit_of_measurement": "W", "device_class": "power"})
+    hass.states.async_set(vue["1d"], "5.1", {"unit_of_measurement": "kWh", "device_class": "energy"})
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": vue["1min"], **FORM})
+    assert result["errors"] == {"source": "source_is_power"}          # 找不到可推薦的 `_1mon`，不亂指
+    assert result["description_placeholders"]["suggestion"] == ""
+    # 每日版在沒有月版可推薦時照舊放行（可用，只是漏較多）
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": vue["1d"], **FORM})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_vue_month_sensor_is_accepted_as_is(hass: HomeAssistant, tz) -> None:
+    vue = add_vue_channel(hass, "1,2,3", "energy_monitor_123")
+    hass.states.async_set(vue["1mon"], "239.3", {"unit_of_measurement": "kWh", "device_class": "energy",
+                                                 "state_class": "total"})   # emporia_vue 的月版是 total，不是 total_increasing
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"source": vue["1mon"], **FORM})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+def source_default(result):
+    """表單裡「來源」欄位目前的預設值（沒有預設就是 None）。"""
+    import voluptuous as vol
+    key = next(k for k in result["data_schema"].schema if k == "source")
+    return None if key.default is vol.UNDEFINED else key.default()
+
+
+async def test_wizard_defaults_to_whole_home_month_sensor(hass: HomeAssistant, tz) -> None:
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    assert source_default(result) is None                              # 沒有 Vue：不預設
+    hass.config_entries.flow.async_abort(result["flow_id"])
+
+    add_vue_channel(hass, "7", "dryer")
+    add_vue_channel(hass, "8", "oven")
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    assert source_default(result) is None                              # 只有分路、有兩個：不猜
+    hass.config_entries.flow.async_abort(result["flow_id"])
+
+    add_vue_channel(hass, "1,2,3", "energy_monitor_123")
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    assert source_default(result) == "sensor.energy_monitor_123_1mon"  # 整戶頻道唯一 → 預設它
+
+
+async def test_options_flow_steers_vue_power_to_month(hass: HomeAssistant, tz, freezer) -> None:
+    freezer.move_to(local(2026, 7, 13, 0, 0))
+    vue = add_vue_channel(hass, "1,2,3", "energy_monitor_123")
+    hass.states.async_set(vue["1mon"], "8000", {"unit_of_measurement": "kWh", "device_class": "energy"})
+    hass.states.async_set(vue["1min"], "330", {"unit_of_measurement": "W", "device_class": "power"})
+    entry = await setup_entry(hass, {**DATA, "source": vue["1mon"]})
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"source": vue["1min"], **FORM})
+    assert result["errors"] == {"source": "source_vue_power"}
+    assert result["description_placeholders"]["suggestion"] == vue["1mon"]
+    assert entry.options == {}

@@ -59,7 +59,7 @@
 | 單位 | 是什麼 | 能不能當來源 |
 |---|---|---|
 | kWh，一直往上加 | 累積度數 | ✅ 直接用 |
-| kWh，但每天／每月歸零（例如 Emporia 的 `*_1d`、`*_1mon`） | 一段時間內的度數 | ⚠️ 整合版可用，見下 |
+| kWh，但每天／每月歸零（例如 Emporia Vue 的「今日」「本月」） | 一段時間內的度數 | ⚠️ 整合版可用（月版最好），見下 |
 | W／kW | 功率（現在用多快） | ❌ 要先用 Integration helper 積成 kWh |
 | Wh／MWh | 單位差 1000 倍 | ❌ 先換成 kWh |
 
@@ -81,16 +81,37 @@
 
 **用 Emporia Vue 的人**
 
-Emporia Vue 整合（HACS 的 `emporia_vue`）每個頻道會產生同一種量測的好幾個時間窗口版本，名稱結尾像 `_1min`、`_1d`、`_1mon`；
-名稱與單位**以你自己的實體清單為準**，先看單位再選：
+Emporia Vue 整合（HACS 的 `emporia_vue`）每個頻道（迴路）各有三個 sensor。下面是照該整合的
+[原始碼](https://github.com/magico13/ha-emporia-vue/blob/3e4cd1f0f621be11527171ffcbd64a63ae90e3b8/custom_components/emporia_vue/sensor.py#L116-L128)
+（`CurrentVuePowerSensor`，2026-11-18 讀的版本）整理的，並對過作者家實機的數值（`_1min` 約 325–334、`_1mon` 兩分鐘從 239.3299 長到 239.3409，
+增量剛好是 330 W × 2 分鐘 ≈ 0.011 kWh）：
 
-- 選**單位是 kWh、結尾 `_1mon`（或你的總電表頻道）**的 sensor。作者家就是這樣用：來源 `sensor.energy_monitor_123_1mon`，偶數月 13 日抄表。
-- 整合版會把「讀數掉到上次的 90% 以下」當成歸零、把新讀數算成新增度數，所以每月自己歸零的 kWh sensor 可以用；
-  代價是歸零前後那幾分鐘的度數會漏掉一點點。package 版（`utility_meter`）請用累積型 sensor。
-- 單位是 **kW／W 的 `_1min`**（每分鐘平均功率）：照上面「只有功率 sensor」建 Integration helper，方法選 **left**，前綴 **k**，時間單位 **h**。
-- 要選**總用電**那個頻道（主電表／Mains／Total），不是單一迴路；多個頻道加起來才是整戶用電。
+| 後綴（舊版實體 ID） | 新版顯示名稱 | 是什麼 | 單位／device class／state class | 當來源？ |
+|---|---|---|---|---|
+| `_1min` | Power Minute Average | 這一分鐘的平均**功率** | W／`power`／`measurement` | ❌ 是功率，不能直接當來源 |
+| `_1d` | Energy Today | 今天用了幾度，每天 00:00 歸零 | kWh／`energy`／`total` | ⚠️ 能用，但每天歸零一次，不建議 |
+| `_1mon` | Energy This Month | 這個計費月用了幾度，每月歸零 | kWh／`energy`／`total` | ✅ **選這個** |
 
-選錯單位的話，設定精靈會直接提示，不用猜。
+（實體 ID 的結尾看你什麼時候裝的：作者家是 `_1min`／`_1d`／`_1mon`；上面原始碼現在給 sensor 的顯示名稱是 `Power Minute Average`／`Energy Today`／`Energy This Month`，
+Home Assistant 用顯示名稱產生 ID，所以新裝的結尾可能是 `_power_minute_average`／`_energy_today`／`_energy_this_month`（這是依原始碼推的，作者家沒有新裝的實例可對）。
+認單位與「本月」這個意思，不要只看 ID 結尾。精靈是用 `emporia_vue` 的內部編號認的，兩種命名都適用。）
+
+**來源選「本月」那個（`_1mon`／Energy This Month）。**
+
+- 它的 state class 是 `total`（不是 `total_increasing`），而且會歸零：歸零日是你在 Emporia app 設的計費起算日
+  （[原始碼](https://github.com/magico13/ha-emporia-vue/blob/3e4cd1f0f621be11527171ffcbd64a63ae90e3b8/custom_components/emporia_vue/__init__.py#L864-L893)：
+  取「最近一次的起算日 00:00」，沒有這天就用月底）。**這和你台電的抄表日不用對齊**：本整合只看讀數的增量，不看它哪天歸零。
+- 整合版處理歸零的方式：讀數掉到上次的 90% 以下就當成歸零，把新讀數當作新增度數（`cycle.apply_reading`）。所以每個月歸零一次沒問題；
+  代價是歸零前後那幾分鐘的度數會漏掉一點點（月版一個月漏一次；日版一個月漏 30 次，所以不選日版）。
+  package 版（`utility_meter`）不會處理歸零，請用只增不減的 sensor。
+- 兩個月一期的台電週期，會橫跨兩次 Vue 的月歸零，這是正常的，整合版會把兩段接起來。
+- **`_1min` 是功率（W）**，不能直接當來源。真的想用它（例如要更細的積分）才照上面「只有功率 sensor」建 Integration helper：
+  積分方法 **left**、前綴 **k**、時間單位 **h**。但已經有 `_1mon` 就不需要，多一層 helper 只會多一個出錯的地方。
+- 要選**整戶**的頻道（`1,2,3`，作者家是 `sensor.energy_monitor_123_1mon`；Vue 3 可能是 Mains／Balance 之類的名稱），不是單一迴路；
+  單一迴路加起來才是整戶用電。
+
+設定精靈認得 Vue：如果你的 Home Assistant 裡有 `emporia_vue` 的 sensor，精靈會**預設選整戶頻道（`1,2,3`）的 `_1mon`**（只有一個符合才預設，
+有好幾個就不猜）；你選了 `_1min` 或 `_1d`，會被擋下並直接寫出同一個迴路的 `_1mon` 該選哪個、已幫你填好。其他單位選錯也會提示，不用猜。
 
 ### 方法一：Marketplace／HACS 整合（建議）
 

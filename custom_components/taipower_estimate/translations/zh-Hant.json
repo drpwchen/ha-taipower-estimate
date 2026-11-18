@@ -13,7 +13,7 @@
           "initial_used": "這期已用度數（選填）"
         },
         "data_description": {
-          "source": "單位 kWh、累積度數的 sensor（state_class: total_increasing）。只有功率（W）sensor 的話，先建 Integration helper 積成 kWh；Emporia Vue 用 *_1mon 之類的 kWh sensor。細節見 README。",
+          "source": "單位 kWh、累積度數的 sensor（state_class: total_increasing）。只有功率（W）sensor 的話，先建 Integration helper 積成 kWh；Emporia Vue 請選整戶的 *_1mon（本月、kWh），不要選 *_1min 或 *_1d。細節見 README。",
           "reading_day": "該月沒有這天就用月底。到這天 00:00 這期歸零。",
           "initial_used": "知道這期從抄表日到現在用了多少度就填，第一期就能準；不填則從現在開始量，以實測速率外推。"
         }
@@ -24,6 +24,8 @@
     },
     "error": {
       "source_is_power": "這是功率（W／kW）sensor，不能直接用——它只告訴你「現在用多快」，不是累積度數。請先建一個 Integration helper 把它積成 kWh，再選那個 helper。做法：{integration_doc}",
+      "source_vue_power": "這是 Emporia Vue 的功率（W）sensor（*_1min），不是累積度數。請改選同一個迴路的「本月」kWh sensor：{suggestion}。原因：{integration_doc}",
+      "source_vue_day": "這是 Emporia Vue 的「今日」kWh sensor（*_1d），每天歸零一次、每次會漏掉幾分鐘。請改選同一個迴路的「本月」sensor：{suggestion}。原因：{integration_doc}",
       "source_not_kwh": "這個 sensor 的單位不是 kWh（Wh／MWh 會差 1000 倍）。請改選 kWh 的累積 sensor，或用 template／Integration helper 換成 kWh。說明：{integration_doc}"
     }
   },
@@ -39,13 +41,15 @@
           "reading_parity": "抄表月份（兩個月抄表才用得到）"
         },
         "data_description": {
-          "source": "單位 kWh、累積度數的 sensor（state_class: total_increasing）。只有功率（W）sensor 的話，先建 Integration helper 積成 kWh；Emporia Vue 用 *_1mon 之類的 kWh sensor。細節見 README。",
+          "source": "單位 kWh、累積度數的 sensor（state_class: total_increasing）。只有功率（W）sensor 的話，先建 Integration helper 積成 kWh；Emporia Vue 請選整戶的 *_1mon（本月、kWh），不要選 *_1min 或 *_1d。細節見 README。",
           "reading_day": "該月沒有這天就用月底。到這天 00:00 這期歸零。"
         }
       }
     },
     "error": {
       "source_is_power": "這是功率（W／kW）sensor，不能直接用——它只告訴你「現在用多快」，不是累積度數。請先建一個 Integration helper 把它積成 kWh，再選那個 helper。做法：{integration_doc}",
+      "source_vue_power": "這是 Emporia Vue 的功率（W）sensor（*_1min），不是累積度數。請改選同一個迴路的「本月」kWh sensor：{suggestion}。原因：{integration_doc}",
+      "source_vue_day": "這是 Emporia Vue 的「今日」kWh sensor（*_1d），每天歸零一次、每次會漏掉幾分鐘。請改選同一個迴路的「本月」sensor：{suggestion}。原因：{integration_doc}",
       "source_not_kwh": "這個 sensor 的單位不是 kWh（Wh／MWh 會差 1000 倍）。請改選 kWh 的累積 sensor，或用 template／Integration helper 換成 kWh。說明：{integration_doc}"
     }
   },
